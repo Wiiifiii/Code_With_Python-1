@@ -16,49 +16,49 @@ This script uses an initial Euler step followed by the Adams-Bashforth method to
 import numpy as np
 import os
 
-filename=os.path.dirname(__file__)+'/output.txt' # the output file path
+filename = os.path.dirname(__file__) + '/output.txt'  # the output file path
+
 def save(outf, x, t):
-    x_i=x[0]
-    y_i=x[1]
-    outf.write(f'{t} {x_i} {y_i}\n')    # Write the time, x, and y coordinates to the file.
+    x_i = x[0]
+    y_i = x[1]
+    outf.write(f'{t} {x_i} {y_i}\n')  # Write the time, x, and y coordinates to the file.
 
 def ab_spiral(Dt, n):
     # Initial conditions: X = [x, y, vx, vy]
-    X = np.array([1.0, 0.0, 0.0, 1.0], dtype=float) # Initial position and velocity
+    X = np.array([1.0, 0.0, 0.0, 1.0], dtype=float)  # Initial position and velocity
 
-    def acceleration(x, y, vx, vy): # Function to calculate acceleration based on position and velocity.
-        r = np.sqrt(x*x + y*y) # The radial distance from the origin, calculated using the Pythagorean theorem.
+    def acceleration(x, y, vx, vy):  # Function to calculate acceleration based on position and velocity.
+        r = np.sqrt(x * x + y * y)  # The radial distance from the origin.
         if r == 0:
-            # In case of extremely unlikely scenario of returning to origin, avoid division by zero:
-            r = 1e-12 
-        ax = (-1.25 / r)*x - 0.3*vx # Compute the acceleration in the x direction.
-        ay = (-1.25 / r)*y - 0.3*vy # Compute the acceleration in the y direction.
+            r = 1e-12  # Avoid division by zero
+        ax = (-1.25 / r) * x - 0.3 * vx  # Compute the acceleration in the x direction.
+        ay = (-1.25 / r) * y - 0.3 * vy  # Compute the acceleration in the y direction.
         return ax, ay
 
     def f(X):
-        x, y, vx, vy = X    # Unpack the position and velocity values.
-        ax, ay = acceleration(x, y, vx, vy) # Compute the acceleration values.
+        x, y, vx, vy = X  # Unpack the position and velocity values.
+        ax, ay = acceleration(x, y, vx, vy)  # Compute the acceleration values.
         return np.array([vx, vy, ax, ay], dtype=float)  # Return the acceleration values.
 
-    times = [i*Dt for i in range(n+1)]  # Create a list of time values from 0 to n*Dt.
+    times = [i * Dt for i in range(n + 1)]  # Create a list of time values from 0 to n*Dt.
     f_list = []
 
     with open(filename, "w") as out:
         # Write initial condition line
         out.write(f"{times[0]} {X[0]} {X[1]}\n")
 
-        for i in range(1, n+1): # Loop over the time steps.
-            current_f = f(X)    # Compute the current f-value.
-            f_list.append(current_f)    # Append the current f-value to the list.
+        for i in range(1, n + 1):  # Loop over the time steps.
+            current_f = f(X)  # Compute the current f-value.
+            f_list.append(current_f)  # Append the current f-value to the list.
 
-            # If we have fewer than 2 f-values, use Euler method
-            if len(f_list) < 2:
-                X = X + Dt*current_f
+            if len(f_list) < 3:  # If fewer than 3 f-values, use a simpler method (Euler or AB1/AB2)
+                X = X + Dt * current_f
             else:
-                # Use AB2 once we have at least 2 f-values
-                fk = f_list[-1]    # f(X_k)
+                # Use Adams-Bashforth (k=2, third-order) when we have at least 3 f-values
+                fk = f_list[-1]  # f(X_k)
                 fkm1 = f_list[-2]  # f(X_{k-1})
-                X = X + (Dt/2)*(3*fk - fkm1)
+                fkm2 = f_list[-3]  # f(X_{k-2})
+                X = X + (Dt / 12) * (23 * fk - 16 * fkm1 + 5 * fkm2)    # Compute the next X value using AB2
 
             # Write a line for this step
             out.write(f"{times[i]:.8f} {X[0]:.8f} {X[1]:.8f}\n")
